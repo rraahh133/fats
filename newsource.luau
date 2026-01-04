@@ -602,9 +602,6 @@ function Library:Window(options)
                 Set(val)
             end
 
-                Set(val)
-            end
-
             return SectionAPI
         end
 
