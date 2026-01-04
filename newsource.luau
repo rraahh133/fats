@@ -207,17 +207,48 @@ function Library:Window(options)
         ZIndex = 2
     })
     
-    Create("TextLabel", {
+    local StatsLabel = Create("TextLabel", {
         Parent = Footer,
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 20, 0, 0),
         Size = UDim2.new(0.5, 0, 1, 0),
         Font = Enum.Font.GothamBold,
-        Text = "PROTOCOL: GL-CORE-V4   ENCRYPTION: RSA-4096",
+        Text = "FPS: --   PING: --",
         TextColor3 = Library.Theme.Accent,
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left
     })
+    
+    -- Stats Updater
+    task.spawn(function()
+        local RunService = game:GetService("RunService")
+        local Stats = game:GetService("Stats")
+        
+        local lastTime = tick()
+        local frames = 0
+        
+        RunService.RenderStepped:Connect(function()
+            frames = frames + 1
+        end)
+        
+        while true do
+            task.wait(1)
+            local currentTime = tick()
+            local fps = math.round(frames / (currentTime - lastTime))
+            frames = 0
+            lastTime = currentTime
+            
+            local pingStr = "0 ms"
+            pcall(function()
+                pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+            end)
+            -- pingStr usually looks like "50.12 ms", let's clean it up slightly if needed or just use it
+            -- Let's extract just the number
+            local pingVal = pingStr:match("^(%d+)") or "0"
+            
+            StatsLabel.Text = string.format("FPS: %d   PING: %s ms", fps, pingVal)
+        end
+    end)
 
     --// Logic
     local WindowAPI = {}
