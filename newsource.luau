@@ -602,6 +602,177 @@ function Library:Window(options)
                 Set(val)
             end
 
+            function SectionAPI:Dropdown(cfg)
+                local isOpened = false
+                local options = cfg.Options or {}
+                local selected = cfg.Default or options[1] or "None"
+                
+                local DropdownFrame = Create("Frame", {
+                    Name = "Dropdown",
+                    Parent = Container,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 40), 
+                    ClipsDescendants = true
+                })
+                
+                -- Header
+                local Header = Create("TextButton", {
+                    Name = "Header",
+                    Parent = DropdownFrame,
+                    BackgroundColor3 = Library.Theme.Background, -- Or lighter?
+                    BackgroundTransparency = 1, 
+                    Size = UDim2.new(1, 0, 0, 30),
+                    AutoButtonColor = false,
+                    Text = ""
+                })
+                -- Bg for header
+                local HeaderBg = Create("Frame", {
+                   Parent = Header,
+                   BackgroundColor3 = Library.Theme.Background,
+                   Size = UDim2.new(1,0,1,0),
+                   ZIndex = -1
+                })
+                Create("UICorner", {Parent = HeaderBg, CornerRadius = UDim.new(0, 6)})
+                Create("UIStroke", {Parent = HeaderBg, Color = Library.Theme.Border, Thickness = 1})
+                
+                local Label = Create("TextLabel", {
+                    Parent = Header,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 10, 0, 0),
+                    Size = UDim2.new(0.6, 0, 1, 0),
+                    Font = Enum.Font.GothamMedium,
+                    Text = cfg.Name,
+                    TextColor3 = Library.Theme.Text,
+                    TextSize = 13,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
+                
+                local SelectedLabel = Create("TextLabel", {
+                    Parent = Header,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0.6, 0, 0, 0),
+                    Size = UDim2.new(0.4, -25, 1, 0),
+                    Font = Enum.Font.Gotham,
+                    Text = selected,
+                    TextColor3 = Library.Theme.Accent,
+                    TextSize = 13,
+                    TextXAlignment = Enum.TextXAlignment.Right
+                })
+                
+                local Arrow = Create("ImageLabel", {
+                     Parent = Header,
+                     BackgroundTransparency = 1,
+                     Position = UDim2.new(1, -20, 0.5, -6),
+                     Size = UDim2.fromOffset(12, 12),
+                     Image = "rbxassetid://10709790948",
+                     ImageColor3 = Library.Theme.TextDark
+                })
+
+                -- Content
+                local Content = Create("Frame", {
+                    Parent = DropdownFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 0, 0, 35),
+                    Size = UDim2.new(1, 0, 0, 0),
+                    Visible = false
+                })
+                
+                -- Search
+                local SearchBar = Create("TextBox", {
+                    Parent = Content,
+                    BackgroundColor3 = Library.Theme.CardInfo,
+                    Position = UDim2.new(0, 5, 0, 0),
+                    Size = UDim2.new(1, -10, 0, 25),
+                    Font = Enum.Font.Gotham,
+                    PlaceholderText = "Search...",
+                    PlaceholderColor3 = Library.Theme.TextDark,
+                    Text = "",
+                    TextColor3 = Library.Theme.Text,
+                    TextSize = 12,
+                    ClearTextOnFocus = false
+                })
+                Create("UICorner", {Parent = SearchBar, CornerRadius = UDim.new(0, 4)})
+                Create("UIStroke", {Parent = SearchBar, Color = Library.Theme.Border, Thickness = 1})
+                
+                local Scroll = Create("ScrollingFrame", {
+                    Parent = Content,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 5, 0, 30),
+                    Size = UDim2.new(1, -10, 0, 0),
+                    CanvasSize = UDim2.new(0,0,0,0),
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ScrollBarThickness = 2,
+                    BorderSizePixel = 0
+                })
+                
+                Create("UIListLayout", {
+                    Parent = Scroll,
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = UDim.new(0, 5)
+                })
+                
+                local function Refresh(filter)
+                    filter = filter and filter:lower() or ""
+                    for _, c in pairs(Scroll:GetChildren()) do
+                        if c:IsA("TextButton") then c:Destroy() end
+                    end
+                    
+                    local count = 0
+                    for _, opt in ipairs(options) do
+                        if filter == "" or opt:lower():find(filter) then
+                            local btn = Create("TextButton", {
+                                 Parent = Scroll,
+                                 BackgroundColor3 = (opt == selected) and Library.Theme.Accent or Library.Theme.CardInfo,
+                                 BackgroundTransparency = (opt == selected) and 0.5 or 0.8,
+                                 Size = UDim2.new(1, 0, 0, 22),
+                                 Font = Enum.Font.Gotham,
+                                 Text = opt,
+                                 TextColor3 = Library.Theme.Text,
+                                 TextSize = 12,
+                                 AutoButtonColor = false
+                            })
+                            Create("UICorner", {Parent = btn, CornerRadius = UDim.new(0, 4)})
+                            
+                            btn.MouseButton1Click:Connect(function()
+                                selected = opt
+                                SelectedLabel.Text = selected
+                                if cfg.Callback then cfg.Callback(selected) end
+                                
+                                isOpened = false
+                                Content.Visible = false
+                                DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
+                                TweenService:Create(Arrow, TweenInfo.new(0.2), {Rotation = 0}):Play()
+                            end)
+                            count = count + 1
+                        end
+                    end
+                    
+                    local h = math.min(count * 27, 150)
+                    Scroll.Size = UDim2.new(1, -10, 0, h)
+                    return h
+                end
+                
+                SearchBar:GetPropertyChangedSignal("Text"):Connect(function()
+                     local h = Refresh(SearchBar.Text)
+                     Content.Size = UDim2.new(1, 0, 0, 30 + h + 5)
+                     DropdownFrame.Size = UDim2.new(1, 0, 0, 40 + Content.Size.Y.Offset)
+                end)
+                
+                Header.MouseButton1Click:Connect(function()
+                    isOpened = not isOpened
+                    Content.Visible = isOpened
+                    if isOpened then
+                        local h = Refresh("")
+                        Content.Size = UDim2.new(1, 0, 0, 30 + h + 5)
+                        DropdownFrame.Size = UDim2.new(1, 0, 0, 40 + Content.Size.Y.Offset)
+                        TweenService:Create(Arrow, TweenInfo.new(0.2), {Rotation = 180}):Play()
+                    else
+                        DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
+                        TweenService:Create(Arrow, TweenInfo.new(0.2), {Rotation = 0}):Play()
+                    end
+                end)
+            end
+
             return SectionAPI
         end
 
