@@ -489,20 +489,20 @@ function Library:Window(options)
     end
 
     function WindowAPI:AddSidebarSection(name, fixedScrollHeight)
+          local isFill = (fixedScrollHeight == "Fill")
+          
           local SectionFrame = Create("Frame", {
                 Name = "SidebarSection",
                 Parent = SidebarContent,
                 BackgroundColor3 = Library.Theme.CardInfo,
-                Position = UDim2.new(0,0,0,0), -- Handled by layout
-                Size = UDim2.new(1, 0, 0, 0), -- Auto scaled
-                AutomaticSize = Enum.AutomaticSize.Y
+                Position = UDim2.new(0,0,0,0), 
+                Size = isFill and UDim2.new(1, 0, 1, 0) or UDim2.new(1, 0, 0, 0), -- Fill or Auto
+                AutomaticSize = isFill and Enum.AutomaticSize.None or Enum.AutomaticSize.Y
             })
             
             Create("UICorner", {Parent = SectionFrame, CornerRadius = UDim.new(0, 6)})
             Create("UIStroke", {Parent = SectionFrame, Color = Library.Theme.Border, Thickness = 1})
             
-             -- Sidebar styling from image
-             -- "SCRIPT HUB    v1.2"
              -- Header area
              local Header = Create("Frame", {
                  Parent = SectionFrame,
@@ -517,13 +517,24 @@ function Library:Window(options)
                 Size = UDim2.new(1, -20, 1, 0),
                 Font = Enum.Font.GothamBold,
                 Text = name:upper(),
-                TextColor3 = Library.Theme.Accent, -- Blue title like "SCRIPT HUB"
+                TextColor3 = Library.Theme.Accent,
                 TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
             local Container
-            if fixedScrollHeight then
+            if isFill then
+                 Container = Create("ScrollingFrame", {
+                    Parent = SectionFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 10, 0, 30),
+                    Size = UDim2.new(1, -20, 1, -40), -- Fill remaining height
+                    CanvasSize = UDim2.new(0, 0, 0, 0),
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ScrollBarThickness = 2,
+                    ScrollBarImageColor3 = Library.Theme.Accent
+                })
+            elseif fixedScrollHeight then
                 Container = Create("ScrollingFrame", {
                     Parent = SectionFrame,
                     BackgroundTransparency = 1,
