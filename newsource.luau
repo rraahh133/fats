@@ -490,7 +490,7 @@ function Library:Window(options)
         return TabAPI
     end
 
-    function WindowAPI:AddSidebarSection(name)
+    function WindowAPI:AddSidebarSection(name, fixedScrollHeight)
           local SectionFrame = Create("Frame", {
                 Name = "SidebarSection",
                 Parent = SidebarContent,
@@ -524,13 +524,27 @@ function Library:Window(options)
                 TextXAlignment = Enum.TextXAlignment.Left
             })
 
-            local Container = Create("Frame", {
-                Parent = SectionFrame,
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 10, 0, 30),
-                Size = UDim2.new(1, -20, 0, 0),
-                AutomaticSize = Enum.AutomaticSize.Y
-            })
+            local Container
+            if fixedScrollHeight then
+                Container = Create("ScrollingFrame", {
+                    Parent = SectionFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 10, 0, 30),
+                    Size = UDim2.new(1, -20, 0, fixedScrollHeight),
+                    CanvasSize = UDim2.new(0, 0, 0, 0),
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ScrollBarThickness = 2,
+                    ScrollBarImageColor3 = Library.Theme.Accent
+                })
+            else
+                Container = Create("Frame", {
+                    Parent = SectionFrame,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 10, 0, 30),
+                    Size = UDim2.new(1, -20, 0, 0),
+                    AutomaticSize = Enum.AutomaticSize.Y
+                })
+            end
             
             Create("UIListLayout", {
                 Parent = Container,
