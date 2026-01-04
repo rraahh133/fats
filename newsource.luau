@@ -607,30 +607,33 @@ function Library:Window(options)
             end
             
             function SideAPI:AddLog(text, color)
-                 -- Improved Log Entry
+                 -- Explicit Height Calculation to fix overlapping
+                 local TextSvc = game:GetService("TextService")
+                 local fSize = 12
+                 local fFont = Enum.Font.Code
+                 local cardWidth = Container.AbsoluteSize.X - 10 -- Approximate width
+                 if cardWidth <= 0 then cardWidth = 200 end -- Fallback
+                 
+                 local bounds = TextSvc:GetTextSize(text, fSize, fFont, Vector2.new(cardWidth, 9999))
+                 
                  local LogContainer = Create("Frame", {
                     Parent = Container,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 0), -- Auto size Y
-                    AutomaticSize = Enum.AutomaticSize.Y
+                    BackgroundTransparency = 1, -- Alternating backgrounds could be added here
+                    Size = UDim2.new(1, 0, 0, bounds.Y + 4),
                  })
                  
                  local LogLbl = Create("TextLabel", {
                     Parent = LogContainer,
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 0), -- Auto size Y
-                    AutomaticSize = Enum.AutomaticSize.Y,
-                    Font = Enum.Font.Code,
+                    Size = UDim2.new(1, 0, 1, 0),
+                    Font = fFont,
                     Text = text,
                     TextColor3 = color or Library.Theme.TextDark,
-                    TextSize = 11,
+                    TextSize = fSize,
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    TextWrapped = true, -- Crucial for preventing overlap
+                    TextWrapped = true,
                     RichText = true
                 })
-                
-                -- Add small padding between logs
-                Create("UIPadding", {Parent = LogContainer, PaddingBottom = UDim.new(0, 2), PaddingTop = UDim.new(0, 2)})
             end
 
             return SideAPI
