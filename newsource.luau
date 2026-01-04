@@ -175,14 +175,12 @@ function Library:Window(options)
         AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
     
-    local SidebarContent = Create("ScrollingFrame", {
+    local SidebarContent = Create("Frame", {
         Name = "Sidebar",
         Parent = ContentArea,
         BackgroundTransparency = 1,
         Position = UDim2.new(0.7, 10, 0, 0),
         Size = UDim2.new(0.3, -10, 1, 0),
-        ScrollBarThickness = 0,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
 
     --// Footer
