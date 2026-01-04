@@ -60,67 +60,75 @@ function Library:Loader(startConfig)
     local Name = loadInfo.Name or "Sim1X"
     local Duration = loadInfo.Duration or 2
     
+    -- 1. Setup Blur
+    local Lighting = game:GetService("Lighting")
+    local Blur = Instance.new("BlurEffect")
+    Blur.Size = 0
+    Blur.Parent = Lighting
+    
+    TweenService:Create(Blur, TweenInfo.new(0.5), {Size = 24}):Play()
+    
+    -- 2. Setup Gui
     local LoaderGui = Create("ScreenGui", {
         Name = "Loader",
         Parent = CoreGui,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        IgnoreGuiInset = true -- Covers topbar
     })
     
-    local MainFrame = Create("Frame", {
+    local Background = Create("Frame", {
+        Parent = LoaderGui,
+        BackgroundColor3 = Color3.new(0,0,0),
+        BackgroundTransparency = 1, -- Start transparent
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 0
+    })
+    
+    local CenterText = Create("TextLabel", {
         Parent = LoaderGui,
         AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Library.Theme.Background,
-        Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromOffset(0, 0), -- Start small
-        ClipsDescendants = true
-    })
-    
-    Create("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 10)})
-    Create("UIStroke", {Parent = MainFrame, Color = Library.Theme.Border, Thickness = 2})
-    
-    local Title = Create("TextLabel", {
-        Parent = MainFrame,
         BackgroundTransparency = 1,
-        Position = UDim2.fromScale(0, 0.4),
-        Size = UDim2.fromScale(1, 0.2),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromScale(1, 0.2), -- Wide container
         Font = Enum.Font.GothamBlack,
-        Text = Name:upper(),
-        TextColor3 = Library.Theme.Accent,
-        TextSize = 24,
-        TextTransparency = 1
+        Text = "", -- Start empty for typewriter
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextSize = 64, -- Large text
     })
     
-    local BarBack = Create("Frame", {
-        Parent = MainFrame,
-        BackgroundColor3 = Library.Theme.CardInfo,
-        Position = UDim2.fromScale(0.2, 0.7),
-        Size = UDim2.fromScale(0.6, 0.05),
+    -- 3. Gradient for Text
+    local Gradient = Create("UIGradient", {
+        Parent = CenterText,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Library.Theme.Accent),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 255)) -- Lighter/Different shade
+        }),
+        Rotation = 45
     })
-    Create("UICorner", {Parent = BarBack, CornerRadius = UDim.new(0,4)})
     
-    local BarFill = Create("Frame", {
-        Parent = BarBack,
-        BackgroundColor3 = Library.Theme.Accent,
-        Size = UDim2.fromScale(0, 1),
-    })
-    Create("UICorner", {Parent = BarFill, CornerRadius = UDim.new(0,4)})
-
-    -- Animation
-    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.fromOffset(300, 150)}):Play()
+    -- Typewriter Effect
+    TweenService:Create(Background, TweenInfo.new(0.5), {BackgroundTransparency = 0.3}):Play()
     task.wait(0.5)
     
-    TweenService:Create(Title, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-    task.wait(0.2)
+    for i = 1, #Name do
+        CenterText.Text = Name:sub(1, i)
+        -- Small random delay for realistic typing
+        task.wait(math.random(5, 15) / 100) 
+    end
     
-    TweenService:Create(BarFill, TweenInfo.new(Duration), {Size = UDim2.fromScale(1, 1)}):Play()
+    -- Wait for duration
     task.wait(Duration)
     
-    -- Fade Out
-    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.fromOffset(0, 0), Position = UDim2.fromScale(0.5, 1.5)}):Play()
-    task.wait(0.5)
+    -- 4. Fade Out
+    local fadeInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(Blur, fadeInfo, {Size = 0}):Play()
+    TweenService:Create(Background, fadeInfo, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(CenterText, fadeInfo, {TextTransparency = 1}):Play()
+    
+    task.wait(0.8)
     
     LoaderGui:Destroy()
+    Blur:Destroy()
 end
 
 function Library:Window(options)
