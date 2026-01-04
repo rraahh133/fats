@@ -137,7 +137,7 @@ function Library:Window(options)
         Size = UDim2.new(1, 0, 0.5, 0),
         Position = UDim2.new(0,0,0.1,0),
         Font = Enum.Font.GothamMedium,
-        Text = "USER: " .. Players.LocalPlayer.DisplayName,
+        Text = "USER: " .. Players.LocalPlayer.Name,
         TextColor3 = Library.Theme.TextDark,
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Right
