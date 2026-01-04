@@ -610,7 +610,7 @@ function Library:Window(options)
                  -- Explicit Height Calculation to fix overlapping
                  local TextSvc = game:GetService("TextService")
                  local fSize = 12
-                 local fFont = Enum.Font.Code
+                 local fFont = Enum.Font.GothamMedium
                  local cardWidth = Container.AbsoluteSize.X - 10 -- Approximate width
                  if cardWidth <= 0 then cardWidth = 200 end -- Fallback
                  
