@@ -599,6 +599,9 @@ function Library:Window(options)
                     end
                 end)
                 
+                Set(val)
+            end
+
             function SectionAPI:Dropdown(cfg)
                 local isOpened = false
                 local options = cfg.Options or {}
