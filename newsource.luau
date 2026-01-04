@@ -213,6 +213,13 @@ function Library:Window(options)
     local Tabs = {}
     local CurrentTab = nil
 
+    --// Input Handling (Toggle)
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if not gp and input.KeyCode == Enum.KeyCode.Insert then
+            ScreenGui.Enabled = not ScreenGui.Enabled
+        end
+    end)
+
     function WindowAPI:Tab(name, icon)
         local TabButton = Create("TextButton", {
             Name = name,
@@ -600,18 +607,30 @@ function Library:Window(options)
             end
             
             function SideAPI:AddLog(text, color)
-                 -- Simple text log support
-                 local LogLbl = Create("TextLabel", {
+                 -- Improved Log Entry
+                 local LogContainer = Create("Frame", {
                     Parent = Container,
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 15),
+                    Size = UDim2.new(1, 0, 0, 0), -- Auto size Y
+                    AutomaticSize = Enum.AutomaticSize.Y
+                 })
+                 
+                 local LogLbl = Create("TextLabel", {
+                    Parent = LogContainer,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 0), -- Auto size Y
+                    AutomaticSize = Enum.AutomaticSize.Y,
                     Font = Enum.Font.Code,
                     Text = text,
                     TextColor3 = color or Library.Theme.TextDark,
-                    TextSize = 10,
+                    TextSize = 11,
                     TextXAlignment = Enum.TextXAlignment.Left,
+                    TextWrapped = true, -- Crucial for preventing overlap
                     RichText = true
                 })
+                
+                -- Add small padding between logs
+                Create("UIPadding", {Parent = LogContainer, PaddingBottom = UDim.new(0, 2), PaddingTop = UDim.new(0, 2)})
             end
 
             return SideAPI
