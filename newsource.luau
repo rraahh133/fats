@@ -137,7 +137,7 @@ function Library:Window(options)
         Size = UDim2.new(1, 0, 0.5, 0),
         Position = UDim2.new(0,0,0.1,0),
         Font = Enum.Font.GothamMedium,
-        Text = "UID: #1337",
+        Text = "USER: " .. Players.LocalPlayer.DisplayName,
         TextColor3 = Library.Theme.TextDark,
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Right
@@ -149,11 +149,24 @@ function Library:Window(options)
         Size = UDim2.new(1, 0, 0.5, 0),
         Position = UDim2.new(0,0,0.5,0),
         Font = Enum.Font.GothamBold,
-        Text = "STATUS: ACTIVE",
+        Text = "GAME: ...",
         TextColor3 = Library.Theme.Success,
         TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Right
     })
+
+    -- Update Game Name asynchronously
+    task.spawn(function()
+        local MarketplaceService = game:GetService("MarketplaceService")
+        local success, info = pcall(function()
+            return MarketplaceService:GetProductInfo(game.PlaceId)
+        end)
+        if success and info then
+            Status.Text = "GAME: " .. info.Name
+        else
+            Status.Text = "GAME: Unknown"
+        end
+    end)
 
     --// Content Area
     local ContentArea = Create("Frame", {
