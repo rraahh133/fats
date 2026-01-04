@@ -55,9 +55,77 @@ local function MakeDraggable(topbar, object)
     end)
 end
 
+function Library:Loader(startConfig)
+    local loadInfo = startConfig or {}
+    local Name = loadInfo.Name or "Sim1X"
+    local Duration = loadInfo.Duration or 2
+    
+    local LoaderGui = Create("ScreenGui", {
+        Name = "Loader",
+        Parent = CoreGui,
+        ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    })
+    
+    local MainFrame = Create("Frame", {
+        Parent = LoaderGui,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = Library.Theme.Background,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(0, 0), -- Start small
+        ClipsDescendants = true
+    })
+    
+    Create("UICorner", {Parent = MainFrame, CornerRadius = UDim.new(0, 10)})
+    Create("UIStroke", {Parent = MainFrame, Color = Library.Theme.Border, Thickness = 2})
+    
+    local Title = Create("TextLabel", {
+        Parent = MainFrame,
+        BackgroundTransparency = 1,
+        Position = UDim2.fromScale(0, 0.4),
+        Size = UDim2.fromScale(1, 0.2),
+        Font = Enum.Font.GothamBlack,
+        Text = Name:upper(),
+        TextColor3 = Library.Theme.Accent,
+        TextSize = 24,
+        TextTransparency = 1
+    })
+    
+    local BarBack = Create("Frame", {
+        Parent = MainFrame,
+        BackgroundColor3 = Library.Theme.CardInfo,
+        Position = UDim2.fromScale(0.2, 0.7),
+        Size = UDim2.fromScale(0.6, 0.05),
+    })
+    Create("UICorner", {Parent = BarBack, CornerRadius = UDim.new(0,4)})
+    
+    local BarFill = Create("Frame", {
+        Parent = BarBack,
+        BackgroundColor3 = Library.Theme.Accent,
+        Size = UDim2.fromScale(0, 1),
+    })
+    Create("UICorner", {Parent = BarFill, CornerRadius = UDim.new(0,4)})
+
+    -- Animation
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.fromOffset(300, 150)}):Play()
+    task.wait(0.5)
+    
+    TweenService:Create(Title, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+    task.wait(0.2)
+    
+    TweenService:Create(BarFill, TweenInfo.new(Duration), {Size = UDim2.fromScale(1, 1)}):Play()
+    task.wait(Duration)
+    
+    -- Fade Out
+    TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.fromOffset(0, 0), Position = UDim2.fromScale(0.5, 1.5)}):Play()
+    task.wait(0.5)
+    
+    LoaderGui:Destroy()
+end
+
 function Library:Window(options)
     local ScreenGui = Create("ScreenGui", {
-        Name = "GlacialUI",
+        Name = "Sim1X",
         Parent = CoreGui,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
@@ -94,7 +162,7 @@ function Library:Window(options)
         Position = UDim2.new(0, 20, 0, 0),
         Size = UDim2.new(0, 150, 1, 0),
         Font = Enum.Font.GothamBold,
-        Text = "GLACIAL.IO",
+        Text = options.Name or "Sim1X",
         TextColor3 = Color3.fromRGB(240, 240, 255),
         TextSize = 18,
         TextXAlignment = Enum.TextXAlignment.Left
