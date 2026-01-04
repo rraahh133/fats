@@ -528,11 +528,12 @@ function Library:Window(options)
                     Parent = SectionFrame,
                     BackgroundTransparency = 1,
                     Position = UDim2.new(0, 10, 0, 30),
-                    Size = UDim2.new(1, -20, 1, -40), -- Fill remaining height
+                    Size = UDim2.new(1, -20, 1, -35), 
                     CanvasSize = UDim2.new(0, 0, 0, 0),
                     AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                    ScrollBarThickness = 2,
-                    ScrollBarImageColor3 = Library.Theme.Accent
+                    ScrollBarThickness = 3, -- Make thicker to see
+                    ScrollBarImageColor3 = Library.Theme.Accent,
+                    BorderSizePixel = 0
                 })
             elseif fixedScrollHeight then
                 Container = Create("ScrollingFrame", {
