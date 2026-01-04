@@ -1,16 +1,75 @@
+-- ============================================
+-- UNDETECTED UI LIBRARY
+-- ============================================
+-- Anti-detection modifications:
+-- 1. Uses gethui() or alternative parent instead of CoreGui
+-- 2. Random naming to avoid pattern detection
+-- 3. Removed/wrapped suspicious calls (Stats, MarketplaceService)
+-- 4. All sensitive calls wrapped in pcall
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local TextService = game:GetService("TextService")
+
+-- ANTI-DETECTION: Function to get safe parent
+local function getSafeGuiParent()
+    -- Priority 1: gethui() - executor's hidden UI container
+    if gethui then
+        local success, result = pcall(gethui)
+        if success and result then
+            return result
+        end
+    end
+    
+    -- Priority 2: cloneref'd CoreGui (harder to detect)
+    if cloneref then
+        local success, result = pcall(function()
+            return cloneref(game:GetService("CoreGui"))
+        end)
+        if success and result then
+            return result
+        end
+    end
+    
+    -- Priority 3: PlayerGui (more detectable but works)
+    local player = Players.LocalPlayer
+    if player then
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if playerGui then
+            return playerGui
+        end
+    end
+    
+    -- Fallback: Standard CoreGui
+    local success, coreGui = pcall(function()
+        return game:GetService("CoreGui")
+    end)
+    if success then
+        return coreGui
+    end
+    
+    return nil
+end
+
+-- ANTI-DETECTION: Generate random names
+local function generateRandomName(prefix)
+    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local name = prefix or ""
+    for i = 1, math.random(6, 10) do
+        local idx = math.random(1, #chars)
+        name = name .. chars:sub(idx, idx)
+    end
+    return name
+end
 
 local Library = {}
 Library.Flags = {}
 Library.Theme = {
     Background = Color3.fromRGB(10, 10, 15),
     CardInfo = Color3.fromRGB(15, 15, 21),
-    Accent = Color3.fromRGB(59, 130, 246), -- #3b82f6
+    Accent = Color3.fromRGB(59, 130, 246),
     Text = Color3.fromRGB(240, 240, 240),
     TextDark = Color3.fromRGB(120, 120, 140),
     Border = Color3.fromRGB(30, 30, 45),
@@ -61,26 +120,31 @@ function Library:Loader(startConfig)
     local Name = loadInfo.Name or "Sim1X"
     local Duration = loadInfo.Duration or 2
     
-    -- 1. Setup Blur
-    local Lighting = game:GetService("Lighting")
-    local Blur = Instance.new("BlurEffect")
-    Blur.Size = 0
-    Blur.Parent = Lighting
-    
-    TweenService:Create(Blur, TweenInfo.new(0.5), {Size = 24}):Play()
+    -- 1. Setup Blur (wrapped in pcall for safety)
+    local Blur
+    pcall(function()
+        local Lighting = game:GetService("Lighting")
+        Blur = Instance.new("BlurEffect")
+        Blur.Size = 0
+        Blur.Parent = Lighting
+        TweenService:Create(Blur, TweenInfo.new(0.5), {Size = 24}):Play()
+    end)
     
     -- 2. Setup Gui
+    local guiParent = getSafeGuiParent()
+    if not guiParent then return end
+    
     local LoaderGui = Create("ScreenGui", {
-        Name = "Loader",
-        Parent = CoreGui,
+        Name = generateRandomName("L"),
+        Parent = guiParent,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        IgnoreGuiInset = true -- Covers topbar
+        IgnoreGuiInset = true
     })
     
     local Background = Create("Frame", {
         Parent = LoaderGui,
         BackgroundColor3 = Color3.new(0,0,0),
-        BackgroundTransparency = 1, -- Start transparent
+        BackgroundTransparency = 1,
         Size = UDim2.fromScale(1, 1),
         ZIndex = 0
     })
@@ -90,11 +154,11 @@ function Library:Loader(startConfig)
         AnchorPoint = Vector2.new(0.5, 0.5),
         BackgroundTransparency = 1,
         Position = UDim2.fromScale(0.5, 0.5),
-        Size = UDim2.fromScale(1, 0.2), -- Wide container
+        Size = UDim2.fromScale(1, 0.2),
         Font = Enum.Font.GothamBlack,
-        Text = "", -- Start empty for typewriter
+        Text = "",
         TextColor3 = Color3.fromRGB(255, 255, 255),
-        TextSize = 64, -- Large text
+        TextSize = 64,
     })
     
     -- 3. Gradient for Text
@@ -102,7 +166,7 @@ function Library:Loader(startConfig)
         Parent = CenterText,
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Library.Theme.Accent),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 255)) -- Lighter/Different shade
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 255))
         }),
         Rotation = 45
     })
@@ -113,42 +177,49 @@ function Library:Loader(startConfig)
     
     for i = 1, #Name do
         CenterText.Text = Name:sub(1, i)
-        -- Small random delay for realistic typing
         task.wait(math.random(5, 15) / 100) 
     end
     
-    -- Wait for duration
     task.wait(Duration)
     
     -- 4. Fade Out
     local fadeInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    TweenService:Create(Blur, fadeInfo, {Size = 0}):Play()
+    if Blur then
+        TweenService:Create(Blur, fadeInfo, {Size = 0}):Play()
+    end
     TweenService:Create(Background, fadeInfo, {BackgroundTransparency = 1}):Play()
     TweenService:Create(CenterText, fadeInfo, {TextTransparency = 1}):Play()
     
     task.wait(0.8)
     
     LoaderGui:Destroy()
-    Blur:Destroy()
+    if Blur then Blur:Destroy() end
 end
 
 function Library:Window(options)
-    local UI_Name = options.Name or "Sim1X"
+    local UI_Name = options.Name or generateRandomName("UI")
+    
+    local guiParent = getSafeGuiParent()
+    if not guiParent then
+        warn("Could not find safe GUI parent")
+        return nil
+    end
     
     -- Prevent duplicates / cleanup old instances
-    if CoreGui:FindFirstChild(UI_Name) then
-        CoreGui[UI_Name]:Destroy()
+    local existing = guiParent:FindFirstChild(UI_Name)
+    if existing then
+        existing:Destroy()
     end
 
     local ScreenGui = Create("ScreenGui", {
         Name = UI_Name,
-        Parent = CoreGui,
+        Parent = guiParent,
         ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
         ResetOnSpawn = false
     })
 
     local MainFrame = Create("Frame", {
-        Name = "MainFrame",
+        Name = generateRandomName("M"),
         Parent = ScreenGui,
         BackgroundColor3 = Library.Theme.Background,
         BorderSizePixel = 0,
@@ -164,7 +235,7 @@ function Library:Window(options)
 
     --// Header Area
     local Header = Create("Frame", {
-        Name = "Header",
+        Name = generateRandomName("H"),
         Parent = MainFrame,
         BackgroundColor3 = Color3.fromRGB(12, 12, 18),
         BorderSizePixel = 0,
@@ -172,7 +243,7 @@ function Library:Window(options)
     })
     
     local Logo = Create("TextLabel", {
-        Name = "Logo",
+        Name = generateRandomName("Lo"),
         Parent = Header,
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 20, 0, 0),
@@ -184,7 +255,7 @@ function Library:Window(options)
         TextXAlignment = Enum.TextXAlignment.Left
     })
     
-    Create("Frame", { -- Accent square next to logo
+    Create("Frame", {
         Parent = Logo,
         BackgroundColor3 = Library.Theme.Accent,
         Size = UDim2.fromOffset(8, 8),
@@ -192,7 +263,7 @@ function Library:Window(options)
     })
 
     local TabContainer = Create("Frame", {
-        Name = "Tabs",
+        Name = generateRandomName("T"),
         Parent = Header,
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 180, 0, 0),
@@ -239,41 +310,42 @@ function Library:Window(options)
         TextXAlignment = Enum.TextXAlignment.Right
     })
 
-    -- Update Game Name asynchronously
+    -- ANTI-DETECTION: Safely get game name with pcall
     task.spawn(function()
-        local MarketplaceService = game:GetService("MarketplaceService")
-        local success, info = pcall(function()
-            return MarketplaceService:GetProductInfo(game.PlaceId)
+        pcall(function()
+            local MarketplaceService = game:GetService("MarketplaceService")
+            local success, info = pcall(function()
+                return MarketplaceService:GetProductInfo(game.PlaceId)
+            end)
+            if success and info then
+                Status.Text = "GAME: " .. info.Name
+            else
+                Status.Text = "GAME: Unknown"
+            end
         end)
-        if success and info then
-            Status.Text = "GAME: " .. info.Name
-        else
-            Status.Text = "GAME: Unknown"
-        end
     end)
 
     --// Content Area
     local ContentArea = Create("Frame", {
-        Name = "ContentArea",
+        Name = generateRandomName("C"),
         Parent = MainFrame,
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 20, 0, 80),
-        Size = UDim2.new(1, -40, 1, -110), -- Keeping space for footer
+        Size = UDim2.new(1, -40, 1, -110),
     })
     
-    -- Split Content: Main (Left) and Sidebar (Right)
     local MainContent = Create("ScrollingFrame", {
-        Name = "MainContent",
+        Name = generateRandomName("MC"),
         Parent = ContentArea,
         BackgroundTransparency = 1,
         Size = UDim2.new(0.7, -10, 1, 0),
         ScrollBarThickness = 2,
-        CanvasSize = UDim2.new(0,0,0,0), -- Auto
+        CanvasSize = UDim2.new(0,0,0,0),
         AutomaticCanvasSize = Enum.AutomaticSize.Y
     })
     
     local SidebarContent = Create("Frame", {
-        Name = "Sidebar",
+        Name = generateRandomName("S"),
         Parent = ContentArea,
         BackgroundTransparency = 1,
         Position = UDim2.new(0.7, 10, 0, 0),
@@ -282,7 +354,7 @@ function Library:Window(options)
 
     --// Footer
     local Footer = Create("Frame", {
-        Name = "Footer",
+        Name = generateRandomName("F"),
         Parent = MainFrame,
         BackgroundColor3 = Color3.fromRGB(8, 8, 12),
         BorderSizePixel = 0,
@@ -303,11 +375,8 @@ function Library:Window(options)
         TextXAlignment = Enum.TextXAlignment.Left
     })
     
-    -- Stats Updater
+    -- ANTI-DETECTION: Stats Updater with safe access
     task.spawn(function()
-        local RunService = game:GetService("RunService")
-        local Stats = game:GetService("Stats")
-        
         local lastTime = tick()
         local frames = 0
         
@@ -315,22 +384,29 @@ function Library:Window(options)
             frames = frames + 1
         end)
         
-        while true do
+        while ScreenGui and ScreenGui:IsDescendantOf(game) do
             task.wait(1)
             local currentTime = tick()
             local fps = math.round(frames / (currentTime - lastTime))
             frames = 0
             lastTime = currentTime
             
-            local pingStr = "0 ms"
+            -- ANTI-DETECTION: Wrap Stats access in pcall
+            local pingStr = "0"
             pcall(function()
-                pingStr = Stats.Network.ServerStatsItem["Data Ping"]:GetValueString()
+                local Stats = game:GetService("Stats")
+                if Stats and Stats.Network then
+                    local serverStats = Stats.Network:FindFirstChild("ServerStatsItem")
+                    if serverStats then
+                        local dataPing = serverStats:FindFirstChild("Data Ping")
+                        if dataPing then
+                            pingStr = dataPing:GetValueString():match("^(%d+)") or "0"
+                        end
+                    end
+                end
             end)
-            -- pingStr usually looks like "50.12 ms", let's clean it up slightly if needed or just use it
-            -- Let's extract just the number
-            local pingVal = pingStr:match("^(%d+)") or "0"
             
-            StatsLabel.Text = string.format("FPS: %d   PING: %s ms", fps, pingVal)
+            StatsLabel.Text = string.format("FPS: %d   PING: %s ms", fps, pingStr)
         end
     end)
 
@@ -342,7 +418,7 @@ function Library:Window(options)
 
     function WindowAPI:Tab(name, icon)
         local TabButton = Create("TextButton", {
-            Name = name,
+            Name = generateRandomName("TB"),
             Parent = TabContainer,
             BackgroundTransparency = 1,
             Size = UDim2.new(0, 90, 1, 0),
@@ -352,18 +428,16 @@ function Library:Window(options)
             TextSize = 11,
         })
         
-        -- Tab Icon
         local Ico = Create("ImageLabel", {
             Parent = TabButton,
             BackgroundTransparency = 1,
             Position = UDim2.new(0.5, -10, 0.2, 0),
             Size = UDim2.fromOffset(20, 20),
-            Image = icon or "rbxassetid://10709762497", -- Box/Cube default
+            Image = icon or "rbxassetid://10709762497",
             ImageColor3 = Library.Theme.TextDark
         })
-        TabButton.Text = "\n\n" .. name:upper() -- Push text down
+        TabButton.Text = "\n\n" .. name:upper()
         
-        -- Active Indicator/Glow
         local Indicator = Create("Frame", {
             Parent = TabButton,
             BackgroundColor3 = Library.Theme.Accent,
@@ -373,7 +447,7 @@ function Library:Window(options)
         })
 
         local TabPage = Create("Frame", {
-            Name = name .. "_Page",
+            Name = generateRandomName("TP"),
             Parent = MainContent,
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 1, 0),
@@ -392,8 +466,6 @@ function Library:Window(options)
                 CurrentTab.Icon.ImageColor3 = Library.Theme.TextDark
                 CurrentTab.Indicator.BackgroundTransparency = 1
                 CurrentTab.Page.Visible = false
-                
-                -- Tween out?
             end
             
             TabButton.TextColor3 = Library.Theme.Text
@@ -406,24 +478,23 @@ function Library:Window(options)
 
         TabButton.MouseButton1Click:Connect(Activate)
         
-        if #Tabs == 0 then Activate() end -- Select first tab by default
+        if #Tabs == 0 then Activate() end
         table.insert(Tabs, {Button = TabButton, Icon = Ico, Indicator = Indicator, Page = TabPage})
 
         local TabAPI = {}
 
         function TabAPI:Section(title)
             local SectionFrame = Create("Frame", {
-                Name = "Section",
+                Name = generateRandomName("Sec"),
                 Parent = TabPage,
                 BackgroundColor3 = Library.Theme.CardInfo,
-                Size = UDim2.new(1, 0, 0, 0), -- Auto scaled
+                Size = UDim2.new(1, 0, 0, 0),
                 AutomaticSize = Enum.AutomaticSize.Y
             })
             
             Create("UICorner", {Parent = SectionFrame, CornerRadius = UDim.new(0, 6)})
             Create("UIStroke", {Parent = SectionFrame, Color = Library.Theme.Border, Thickness = 1})
             
-            -- Section Title
             local Title = Create("TextLabel", {
                 Parent = SectionFrame,
                 BackgroundTransparency = 1,
@@ -435,10 +506,6 @@ function Library:Window(options)
                 TextSize = 11,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
-            
-            -- Accent line in title
-            -- Actually the text has a | prefix, maybe style that blue?
-            -- We can emulate it with RichText or a separate frame.
             
             local Container = Create("Frame", {
                 Parent = SectionFrame,
@@ -454,14 +521,13 @@ function Library:Window(options)
                 Padding = UDim.new(0, 8)
             })
             
-            -- Add padding at bottom
             Create("UIPadding", {Parent = SectionFrame, PaddingBottom = UDim.new(0, 15)})
 
             local SectionAPI = {}
 
             function SectionAPI:Toggle(cfg)
                 local ToggleFrame = Create("Frame", {
-                    Name = "Toggle",
+                    Name = generateRandomName("Tog"),
                     Parent = Container,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 30)
@@ -503,7 +569,9 @@ function Library:Window(options)
                 local function Update()
                     TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = state and Library.Theme.Accent or Library.Theme.Background}):Play()
                     TweenService:Create(Circle, TweenInfo.new(0.2), {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}):Play()
-                    if cfg.Callback then cfg.Callback(state) end
+                    if cfg.Callback then 
+                        pcall(cfg.Callback, state)
+                    end
                 end
                 
                 Button.MouseButton1Click:Connect(function()
@@ -517,7 +585,7 @@ function Library:Window(options)
             
             function SectionAPI:Slider(cfg)
                 local SliderFrame = Create("Frame", {
-                    Name = "Slider",
+                    Name = generateRandomName("Sli"),
                     Parent = Container,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 50)
@@ -548,7 +616,7 @@ function Library:Window(options)
                 })
 
                 local SlidesBg = Create("TextButton", {
-                    Name = "SlidesBg",
+                    Name = generateRandomName("SB"),
                     Parent = SliderFrame,
                     BackgroundColor3 = Library.Theme.Background,
                     Position = UDim2.new(0, 5, 0, 25),
@@ -576,7 +644,9 @@ function Library:Window(options)
                     ValueLabel.Text = string.format("%d%s", math.floor(val), cfg.Suffix or "")
                     local p = (val - min) / (max - min)
                     TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.new(p, 0, 1, 0)}):Play()
-                    if cfg.Callback then cfg.Callback(val) end
+                    if cfg.Callback then 
+                        pcall(cfg.Callback, val)
+                    end
                 end
 
                 SlidesBg.InputBegan:Connect(function(input)
@@ -608,7 +678,7 @@ function Library:Window(options)
 
             function SectionAPI:Button(cfg)
                 local ButtonContainer = Create("Frame", {
-                    Name = "Button",
+                    Name = generateRandomName("Btn"),
                     Parent = Container,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 40), 
@@ -642,7 +712,9 @@ function Library:Window(options)
                 Create("UIStroke", {Parent = Btn, Color = Library.Theme.Border, Thickness = 1})
                 
                 Btn.MouseButton1Click:Connect(function()
-                     if cfg.Callback then cfg.Callback() end
+                     if cfg.Callback then 
+                        pcall(cfg.Callback)
+                    end
                 end)
             end
 
@@ -651,7 +723,7 @@ function Library:Window(options)
                 local waiting = false
                 
                 local KeybindContainer = Create("Frame", {
-                    Name = "Keybind",
+                    Name = generateRandomName("KB"),
                     Parent = Container,
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 40),
@@ -703,13 +775,12 @@ function Library:Window(options)
                              Button.Text = binding.Name
                              Button.TextColor3 = Library.Theme.TextDark
                              
-                             if cfg.Callback then cfg.Callback(binding) end
+                             if cfg.Callback then pcall(cfg.Callback, binding) end
                              con:Disconnect()
                         end
                     end)
                 end)
                 
-                -- Allow external Setting
                 function SectionAPI:SetKeybind(key)
                     binding = key
                     Button.Text = key.Name
@@ -722,7 +793,7 @@ function Library:Window(options)
                 local selected = cfg.Default or options[1] or "None"
             
                 local DropdownContainer = Create("Frame", {
-                    Name = "Dropdown",
+                    Name = generateRandomName("DD"),
                     Parent = Container, 
                     BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, 40), 
@@ -742,7 +813,6 @@ function Library:Window(options)
                     ZIndex = 20
                 })
             
-                -- Header Box
                 local RightBox = Create("Frame", {
                     Parent = DropdownContainer,
                     BackgroundColor3 = Library.Theme.CardInfo, 
@@ -755,7 +825,6 @@ function Library:Window(options)
                 Create("UICorner", {Parent = RightBox, CornerRadius = UDim.new(0, 4)})
                 Create("UIStroke", {Parent = RightBox, Color = Library.Theme.Border, Thickness = 1})
                 
-                -- Inner Container
                 local RightContent = Create("Frame", {
                     Parent = RightBox,
                     BackgroundTransparency = 1,
@@ -797,7 +866,6 @@ function Library:Window(options)
                     LayoutOrder = 2
                 })
                 
-                -- Toggle Button (Only visible when closed to allow opening)
                 local ToggleBtn = Create("TextButton", {
                     Parent = RightBox,
                     BackgroundTransparency = 1,
@@ -806,15 +874,14 @@ function Library:Window(options)
                     ZIndex = 25
                 })
 
-                -- Floating List
                 local ListOuter = Create("Frame", {
                     Parent = DropdownContainer, 
                     BackgroundColor3 = Library.Theme.CardInfo,
-                    AnchorPoint = Vector2.new(1, 0), -- Right align
-                    Position = UDim2.new(1, -5, 1, 5), -- Below header
+                    AnchorPoint = Vector2.new(1, 0),
+                    Position = UDim2.new(1, -5, 1, 5),
                     Size = UDim2.new(0, 0, 0, 0),
                     Visible = false,
-                    ZIndex = 100, -- Very high to float over everything
+                    ZIndex = 100,
                     ClipsDescendants = true
                 })
                 Create("UICorner", {Parent = ListOuter, CornerRadius = UDim.new(0, 4)})
@@ -866,7 +933,7 @@ function Library:Window(options)
                                  selected = opt
                                  Input.Text = selected
                                  Input.TextColor3 = Library.Theme.Accent
-                                 if cfg.Callback then cfg.Callback(selected) end
+                                 if cfg.Callback then pcall(cfg.Callback, selected) end
                                  
                                  isOpened = false
                                  ListOuter.Visible = false
@@ -888,14 +955,13 @@ function Library:Window(options)
                 local function Toggle()
                     isOpened = not isOpened
                     ListOuter.Visible = isOpened
-                    ToggleBtn.Visible = not isOpened -- Hide overlay button when open
+                    ToggleBtn.Visible = not isOpened
                     
                     if isOpened then
                         Input.Text = "" 
                         Input.TextColor3 = Library.Theme.Text
                         Refresh("")
-                        -- Re-position on open to ensure it follows the possibly-resized header
-                        ListOuter.Position = UDim2.new(1, -5, 0, 35) -- Relative to DropdownContainer
+                        ListOuter.Position = UDim2.new(1, -5, 0, 35)
                         
                         TweenService:Create(Arrow, TweenInfo.new(0.2), {Rotation = 180}):Play()
                         Input:CaptureFocus()
@@ -914,10 +980,9 @@ function Library:Window(options)
                 end)
                 
                 Input.FocusLost:Connect(function(enter)
-                    -- Small delay to allow button clicks on list to register first
                     task.delay(0.1, function()
                         if isOpened then
-                            Toggle() -- Close
+                            Toggle()
                         end
                     end)
                 end)
@@ -939,18 +1004,17 @@ function Library:Window(options)
           local isFill = (fixedScrollHeight == "Fill")
           
           local SectionFrame = Create("Frame", {
-                Name = "SidebarSection",
+                Name = generateRandomName("SS"),
                 Parent = SidebarContent,
                 BackgroundColor3 = Library.Theme.CardInfo,
                 Position = UDim2.new(0,0,0,0), 
-                Size = isFill and UDim2.new(1, 0, 1, 0) or UDim2.new(1, 0, 0, 0), -- Fill or Auto
+                Size = isFill and UDim2.new(1, 0, 1, 0) or UDim2.new(1, 0, 0, 0),
                 AutomaticSize = isFill and Enum.AutomaticSize.None or Enum.AutomaticSize.Y
             })
             
             Create("UICorner", {Parent = SectionFrame, CornerRadius = UDim.new(0, 6)})
             Create("UIStroke", {Parent = SectionFrame, Color = Library.Theme.Border, Thickness = 1})
             
-             -- Header area
              local Header = Create("Frame", {
                  Parent = SectionFrame,
                  BackgroundTransparency = 1,
@@ -978,7 +1042,7 @@ function Library:Window(options)
                     Size = UDim2.new(1, -20, 1, -35), 
                     CanvasSize = UDim2.new(0, 0, 0, 0),
                     AutomaticCanvasSize = Enum.AutomaticSize.Y,
-                    ScrollBarThickness = 3, -- Make thicker to see
+                    ScrollBarThickness = 3,
                     ScrollBarImageColor3 = Library.Theme.Accent,
                     BorderSizePixel = 0
                 })
@@ -1009,87 +1073,22 @@ function Library:Window(options)
                 Padding = UDim.new(0, 8)
             })
             
-             -- Add padding at bottom
             Create("UIPadding", {Parent = SectionFrame, PaddingBottom = UDim.new(0, 10)})
             
-            -- Sidebar API
             local SideAPI = {}
             
-            function SideAPI:AddScriptCard(title, author, status, callback)
-                local Card = Create("Frame", {
-                    Name = "ScriptCard",
-                    Parent = Container,
-                    BackgroundColor3 = Library.Theme.Background,
-                    Size = UDim2.new(1, 0, 0, 80)
-                })
-                Create("UICorner", {Parent = Card, CornerRadius = UDim.new(0, 6)})
-                
-                Create("TextLabel", { -- Title
-                    Parent = Card,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 10, 0, 10),
-                    Size = UDim2.new(1, -20, 0, 20),
-                    Font = Enum.Font.GothamBold,
-                    Text = title,
-                    TextColor3 = Library.Theme.Text,
-                    TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-                
-                Create("TextLabel", { -- Author
-                    Parent = Card,
-                    BackgroundTransparency = 1,
-                    Position = UDim2.new(0, 10, 0, 25),
-                    Size = UDim2.new(1, -20, 0, 15),
-                    Font = Enum.Font.Gotham,
-                    Text = "By " .. author,
-                    TextColor3 = Library.Theme.TextDark,
-                    TextSize = 11,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-                
-                local StatusBadge = Create("TextLabel", {
-                    Parent = Card,
-                    BackgroundColor3 = Library.Theme.CardInfo,
-                    Position = UDim2.new(1, -50, 0, 10),
-                    Size = UDim2.fromOffset(40, 15),
-                    Font = Enum.Font.GothamBold,
-                    Text = status,
-                    TextColor3 = (status == "READY" and Library.Theme.TextDark) or Library.Theme.Success,
-                    TextSize = 9,
-                })
-                Create("UICorner", {Parent = StatusBadge, CornerRadius = UDim.new(0, 4)})
-                
-                local ExecBtn = Create("TextButton", {
-                    Parent = Card,
-                    BackgroundColor3 = Library.Theme.CardInfo, -- Darker btn
-                    Position = UDim2.new(0, 10, 1, -30),
-                    Size = UDim2.new(1, -20, 0, 25),
-                    Font = Enum.Font.GothamBold,
-                    Text = "EXECUTE",
-                    TextColor3 = Library.Theme.Accent, -- Blue text
-                    TextSize = 11,
-                    AutoButtonColor = false
-                })
-                Create("UICorner", {Parent = ExecBtn, CornerRadius = UDim.new(0, 4)})
-                Create("UIStroke", {Parent = ExecBtn, Color = Library.Theme.Border, Thickness = 1})
-                
-                ExecBtn.MouseButton1Click:Connect(callback)
-            end
-            
             function SideAPI:AddLog(text, color)
-                 -- Explicit Height Calculation to fix overlapping
                  local TextSvc = game:GetService("TextService")
                  local fSize = 12
                  local fFont = Enum.Font.GothamMedium
-                 local cardWidth = Container.AbsoluteSize.X - 10 -- Approximate width
-                 if cardWidth <= 0 then cardWidth = 200 end -- Fallback
+                 local cardWidth = Container.AbsoluteSize.X - 10
+                 if cardWidth <= 0 then cardWidth = 200 end
                  
                  local bounds = TextSvc:GetTextSize(text, fSize, fFont, Vector2.new(cardWidth, 9999))
                  
                  local LogContainer = Create("Frame", {
                     Parent = Container,
-                    BackgroundTransparency = 1, -- Alternating backgrounds could be added here
+                    BackgroundTransparency = 1,
                     Size = UDim2.new(1, 0, 0, bounds.Y + 4),
                  })
                  
@@ -1108,29 +1107,25 @@ function Library:Window(options)
                 })
                 
                 LogLbl.MouseButton1Click:Connect(function()
-                    if setclipboard then
-                        setclipboard(text)
-                        
-                        -- Visual Feedback
-                        local originalText = LogLbl.Text
-                        local originalColor = LogLbl.TextColor3
-                        
-                        LogLbl.Text = "[ COPIED TO CLIPBOARD ]"
-                        LogLbl.TextColor3 = Library.Theme.Accent
-                        
-                        task.wait(0.8)
-                        
-                        if LogLbl and LogLbl.Parent then -- Check if still exists
-                            LogLbl.Text = originalText
-                            LogLbl.TextColor3 = originalColor
+                    pcall(function()
+                        if setclipboard then
+                            setclipboard(text)
+                            local originalText = LogLbl.Text
+                            local originalColor = LogLbl.TextColor3
+                            LogLbl.Text = "[ COPIED ]"
+                            LogLbl.TextColor3 = Library.Theme.Accent
+                            task.wait(0.8)
+                            if LogLbl and LogLbl.Parent then
+                                LogLbl.Text = originalText
+                                LogLbl.TextColor3 = originalColor
+                            end
                         end
-                    end
+                    end)
                 end)
                 
-                -- Auto Scroll Down
                 if Container:IsA("ScrollingFrame") then
                      task.spawn(function()
-                         task.wait() -- Wait for UIListLayout to update
+                         task.wait()
                          Container.CanvasPosition = Vector2.new(0, Container.AbsoluteCanvasSize.Y)
                      end)
                 end
@@ -1139,27 +1134,25 @@ function Library:Window(options)
             return SideAPI
     end
 
-    -- Setup Layout for sidebar
     Create("UIListLayout", {
         Parent = SidebarContent,
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding = UDim.new(0, 15)
     })
 
-    --// Toggle Logic
-    -- CLEANUP OLD CONNECTION (Global)
-    if getgenv().Sim1X_Toggle_Connection then
-        if getgenv().Sim1X_Toggle_Connection.Connected then
-            getgenv().Sim1X_Toggle_Connection:Disconnect()
+    --// Toggle Logic - ANTI-DETECTION: Use random global key
+    local globalKey = generateRandomName("_TC_")
+    if getgenv()[globalKey] then
+        if getgenv()[globalKey].Connected then
+            getgenv()[globalKey]:Disconnect()
         end
-        getgenv().Sim1X_Toggle_Connection = nil
+        getgenv()[globalKey] = nil
     end
 
     Library.ToggleKey = options.ToggleKey or Enum.KeyCode.Insert
     
     local ToggleConnection
     ToggleConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-         -- Check if UI is dead (just in case)
         if not ScreenGui or not ScreenGui:IsDescendantOf(game) then
              if ToggleConnection then ToggleConnection:Disconnect() end
              return
@@ -1177,13 +1170,12 @@ function Library:Window(options)
         end
     end)
     
-    -- Store in global environment so next execution can clean it up
-    getgenv().Sim1X_Toggle_Connection = ToggleConnection
+    getgenv()[globalKey] = ToggleConnection
     
     function WindowAPI:Unload()
-        if getgenv().Sim1X_Toggle_Connection then
-            getgenv().Sim1X_Toggle_Connection:Disconnect()
-            getgenv().Sim1X_Toggle_Connection = nil
+        if getgenv()[globalKey] then
+            getgenv()[globalKey]:Disconnect()
+            getgenv()[globalKey] = nil
         end
         ScreenGui:Destroy()
     end
